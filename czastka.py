@@ -35,3 +35,18 @@ class Czastka:
         elif self.y - self.promien< 0:
             self.y = self.promien
             self.vy = -1 * self.vy
+
+    def zderzenie(self, inna_czastka):
+        if (self.x-inna_czastka.x)**2+(self.y-inna_czastka.y)**2 <= (self.promien+inna_czastka.promien):
+            kat_zderzenia=math.atan((self.y-inna_czastka.y)/(self.x-inna_czastka.x))
+            # wszelkie u to placeholdery na prędkości w układzie pod kątem zderzenia 
+            ux_self=cos(kat_zderzenia)*self.vx+sin(kat_zderzenia)*self.vy
+            uy_self=sin(kat_zderzenia)*self.vx+cos(kat_zderzenia)*self.vy
+            ux_czastka=cos(kat_zderzenia)*inna_czastka.vx+sin(kat_zderzenia)*inna_czastka.vy
+            uy_czastka=sin(kat_zderzenia)*inna_czastka.vx+cos(kat_zderzenia)*inna_czastka.vy
+
+            self.vx=sin(kat_zderzenia)*uy_self+cos(kat_zderzenia)*ux_czastka
+            self.vy=cos(kat_zderzenia)*uy_self+sin(kat_zderzenia)*ux_czastka
+            inna_czastka.vx=sin(kat_zderzenia)*uy_czastka+cos(kat_zderzenia)*ux_self
+            inna_czastka.vy=cos(kat_zderzenia)*uy_czastka+sin(kat_zderzenia)*ux_self
+            
