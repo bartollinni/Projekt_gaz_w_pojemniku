@@ -163,6 +163,67 @@ class PoleSymulacji(QWidget):
         self.grawitacja = czy_wlaczona
         print("Grawitacja:", czy_wlaczona)
 
+    def sprawdz_zderzenia_czastek(self):
+        """
+        Bardzo proste zderzenia sprężyste cząstek.
+        Działa dla jednakowych mas i promieni.
+        Zabezpieczenie przed dzieleniem przez zero jest w if dystans == 0.
+        """
+        for i in range(len(self.czastki)):
+            for j in range(i + 1, len(self.czastki)):
+                c1 = self.czastki[i]
+                c2 = self.czastki[j]
+
+                dx = c2.x - c1.x
+                dy = c2.y - c1.y
+
+                dystans = math.sqrt(dx ** 2 + dy ** 2)
+                min_dystans = c1.promien + c2.promien
+
+                # Jeśli dystans == 0, cząstki są dokładnie w tym samym miejscu.
+                # Wtedy unikamy dzielenia przez zero.
+                if dystans == 0:
+                    dystans = 0.001
+                    dx = 0.001
+                    dy = 0.001
+
+                if dystans < min_dystans:
+                    # Wektor normalny zderzenia
+                    nx = dx / dystans
+                    ny = dy / dystans
+
+                    # Wektor styczny
+                    tx = -ny
+                    ty = nx
+
+                    # Składowe prędkości w kierunku normalnym i stycznym
+                    v1n = c1.vx * nx + c1.vy * ny
+                    v1t = c1.vx * tx + c1.vy * ty
+
+                    v2n = c2.vx * nx + c2.vy * ny
+                    v2t = c2.vx * tx + c2.vy * ty
+
+                    # Dla równych mas w zderzeniu sprężystym
+                    # cząstki wymieniają składowe normalne prędkości
+                    v1n_po = v2n
+                    v2n_po = v1n
+
+                    # Składamy nowe prędkości z części normalnej i stycznej
+                    c1.vx = v1n_po * nx + v1t * tx
+                    c1.vy = v1n_po * ny + v1t * ty
+
+                    c2.vx = v2n_po * nx + v2t * tx
+                    c2.vy = v2n_po * ny + v2t * ty
+
+                    # Rozsuwamy cząstki, żeby nie zostały sklejone
+                    nachodzenie = min_dystans - dystans
+
+                    c1.x -= nx * nachodzenie / 2
+                    c1.y -= ny * nachodzenie / 2
+
+                    c2.x += nx * nachodzenie / 2
+                    c2.y += ny * nachodzenie / 2
+
     def start_stop(self):
         """
         Pauza albo wznowienie symulacji.
@@ -186,7 +247,7 @@ class PoleSymulacji(QWidget):
             cz.ruch()
 
             licznik_odbic += self.sprawdz_sciany(cz)
-
+        self.sprawdz_zderzenia_czastek()
         # "Ciśnienie tu to częstość zderzeń cząstek ze ścianami."
         self.historia_cisnienia.append(licznik_odbic)
     
@@ -429,9 +490,9 @@ class OknoGlowne(QMainWindow):
 
         # Suwak objetosci
         self.suwak_objetosc = QSlider(Qt.Horizontal)
-        self.suwak_objetosc.setMinimum(1)
-        self.suwak_objetosc.setMaximum(26)
-        self.suwak_objetosc.setValue(26)
+        self.suwak_objetosc.setMinimum(3)
+        self.suwak_objetosc.setMaximum(25)
+        self.suwak_objetosc.setValue(25)
         self.suwak_objetosc.valueChanged.connect(self.zmien_objetosc)
 
         # Przyciski
@@ -537,4 +598,5 @@ if __name__ == "__main__":
     okno = OknoGlowne()
     okno.show()
 
+    sys.exit(app.exec())
     sys.exit(app.exec())
