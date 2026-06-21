@@ -145,7 +145,7 @@ class PoleSymulacji(QWidget):
             cz.ruch()
 
             licznik_odbic += self.sprawdz_sciany(cz)
-
+        self.sprawdz_zderzenia_czastek()
         # "Ciśnienie tu to częstość zderzeń cząstek ze ścianami."
         self.historia_cisnienia.append(licznik_odbic)
 
@@ -195,6 +195,67 @@ class PoleSymulacji(QWidget):
             odbicia += 1
 
         return odbicia
+
+    def sprawdz_zderzenia_czastek(self):
+        """
+        Bardzo proste zderzenia sprężyste cząstek.
+        Działa dla jednakowych mas i promieni.
+        Zabezpieczenie przed dzieleniem przez zero jest w if dystans == 0.
+        """
+        for i in range(len(self.czastki)):
+            for j in range(i + 1, len(self.czastki)):
+                c1 = self.czastki[i]
+                c2 = self.czastki[j]
+
+                dx = c2.x - c1.x
+                dy = c2.y - c1.y
+
+                dystans = math.sqrt(dx ** 2 + dy ** 2)
+                min_dystans = c1.promien + c2.promien
+
+                # Jeśli dystans == 0, cząstki są dokładnie w tym samym miejscu.
+                # Wtedy unikamy dzielenia przez zero.
+                if dystans == 0:
+                    dystans = 0.001
+                    dx = 0.001
+                    dy = 0.001
+
+                if dystans < min_dystans:
+                    # Wektor normalny zderzenia
+                    nx = dx / dystans
+                    ny = dy / dystans
+
+                    # Wektor styczny
+                    tx = -ny
+                    ty = nx
+
+                    # Składowe prędkości w kierunku normalnym i stycznym
+                    v1n = c1.vx * nx + c1.vy * ny
+                    v1t = c1.vx * tx + c1.vy * ty
+
+                    v2n = c2.vx * nx + c2.vy * ny
+                    v2t = c2.vx * tx + c2.vy * ty
+
+                    # Dla równych mas w zderzeniu sprężystym
+                    # cząstki wymieniają składowe normalne prędkości
+                    v1n_po = v2n
+                    v2n_po = v1n
+
+                    # Składamy nowe prędkości z części normalnej i stycznej
+                    c1.vx = v1n_po * nx + v1t * tx
+                    c1.vy = v1n_po * ny + v1t * ty
+
+                    c2.vx = v2n_po * nx + v2t * tx
+                    c2.vy = v2n_po * ny + v2t * ty
+
+                    # Rozsuwamy cząstki, żeby nie zostały sklejone
+                    nachodzenie = min_dystans - dystans
+
+                    c1.x -= nx * nachodzenie / 2
+                    c1.y -= ny * nachodzenie / 2
+
+                    c2.x += nx * nachodzenie / 2
+                    c2.y += ny * nachodzenie / 2
 
     def srednia_energia(self):
         """
@@ -268,20 +329,20 @@ class PoleSymulacji(QWidget):
 
     def wspolczynnik_clapeyrona(self):
         """
-        Liczy umowne PV / nRT.
-        R przyjmujemy jako 1.
-        Wynik powinien być rzędu 1, jeśli model zachowuje się jak gaz doskonały.
+        Umowny wskaźnik PV/nRT.
+        Przy grawitacji go nie pokazujemy, bo gaz nie jest jednorodny.
         """
+        if self.grawitacja:
+            return None
+
         n = len(self.czastki)
         R = 1
 
         if n == 0 or self.temperatura == 0:
-            return 0
+            return None
 
         V = self.szerokosc_naczynia * self.wysokosc_naczynia
-
-        # Skala dobrana umownie, bo ciśnienie w symulacji nie ma jednostek SI.
-        P = self.cisnienie / 1000
+        P = self.cisnienie / 900
 
         return (P * V) / (n * R * self.temperatura)
 
@@ -459,14 +520,20 @@ class OknoGlowne(QMainWindow):
         self.pole.resetuj_symulacje()
         self.aktualizuj_napisy()
 
+    
+    ...
     def aktualizuj_napisy(self):
         self.label_czastki.setText(f"Aktualnie: {self.pole.liczba_czastek}")
         self.label_temperatura.setText(f"Aktualnie: {self.pole.temperatura:.1f}")
         self.label_cisnienie.setText(f"Ciśnienie umowne: {self.pole.cisnienie:.2f}")
         self.label_energia.setText(f"Średnia energia: {self.pole.srednia_energia():.2f}")
         clapeyron = self.pole.wspolczynnik_clapeyrona()
-        self.label_clapeyron.setText(f"PV/nRT: {clapeyron:.2f}")
+        if clapeyron is None:
+            self.label_clapeyron.setText("PV/nRT: niedostępne przy grawitacji")
+        else:
+            self.label_clapeyron.setText(f"PV/nRT: {clapeyron:.2f}")
         self.wykres_predkosci.update()
+        
 
 #start
 
